@@ -74,14 +74,6 @@ async def counter(interaction: discord.Interaction, choice: str):
         await interaction.response.send_message(f"not valid choice")
         print (f"{UserID} has used {choice} as a choice in counter command. it is invalid")
 
-@bot.tree.command(name="hello", description="Say hi to the bot")
-async def hello_command(interaction: discord.Interaction):
-    UserID = interaction.user.id
-    ServerID = interaction.guild_id
-    await dblogger.cmdcountup(UserID, ServerID,)
-    greetings = ["Yo", "Sup", "Hello", "How you doin", "Nice to meet you!", "Greetings!", "Hi there!"]
-    random_greeting = random.choice(greetings)
-    await interaction.response.send_message(f"{random_greeting} {interaction.user.mention}", ephemeral=False)
 
 
 @bot.tree.command(name="repeat")
