@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime
 from discord.app_commands import Choice
+from discord.ext.commands import MissingPermissions
 import dblogger
 from dblogger import *
 import random
@@ -47,7 +48,21 @@ async def on_member_join(member):
     ServerID = member.guild.id
     await dblogger.dbfixer(UserID, ServerID)
 
+@bot.tree.command(name="hello", description="Say hi to the bot")
+@commands.has_guild_permissions(kick_members=True)
+async def hello_command(interaction: discord.Interaction):
+    UserID = interaction.user.id
+    ServerID = interaction.guild_id
+    await dblogger.cmdcountup(UserID, ServerID,)
+    greetings = ["Yo", "Sup", "Hello", "How you doin", "Nice to meet you!", "Greetings!", "Hi there!"]
+    random_greeting = random.choice(greetings)
+    await interaction.response.send_message(f"{random_greeting} {interaction.user.mention}", ephemeral=False)
 
+@hello_command.error
+async def warn_error(ctx, error):
+    if isinstance(error, MissingPermissions):
+        print("no permissions")
+        await ctx.send('You dont have permissions sorry', ephemeral=True)
 
 
 @bot.tree.command(name="counter", description="how many commands or messages have you used")
