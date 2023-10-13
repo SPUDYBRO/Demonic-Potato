@@ -60,6 +60,9 @@ async def dbfixer(UserID, ServerID):
                 await db.commit()
                 await db.close()
                 print(f"{UserID} added to db {ServerID}.db")
+            else:
+                print(f"user exists. skipping")
+                await db.close()
         else:
             print(f"no UserID variable input (set to None)")
 
@@ -100,10 +103,10 @@ async def dbfixer(UserID, ServerID):
 
 
 async def msgcountup(UserID, ServerID):
-    await dbfixer(UserID, ServerID)
     db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
     cursor = await db.cursor()
     await cursor.execute('''UPDATE Userinfo SET msgsent = msgsent + 1 WHERE UserID = ?''', (UserID,))
+    print(f"message count upped for {UserID} in server {ServerID}")
     await db.commit()
     await db.close()
 
@@ -113,6 +116,7 @@ async def cmdcountup(UserID, ServerID):
     db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
     cursor = await db.cursor()
     await cursor.execute('''UPDATE Userinfo SET Cmdused = Cmdused + 1 WHERE UserID = ?''', (UserID,))
+    print(f"command count upped for {UserID} in server {ServerID}")
     await db.commit()
     await db.close()
 
@@ -296,28 +300,28 @@ async def RPSlogic(player1, player2, p1choice, p2choice):
             return Winner
         elif p2choice == "scissors":
             Winner = "player1"
-            Winner
+            return Winner
         elif p2choice == "paper":
             Winner = "player2"
             return Winner
     # p1 Paper Possabilitys
     elif p1choice == "paper":
         if p2choice == "rock":
-            Winner = player1
+            Winner = "player1"
             return player1
         elif p2choice == "paper":
             Winner = "null"
             return Winner
         elif p2choice == "scissors":
-            Winner = player2
+            Winner = "player2"
             return Winner
     # p1 Scissors Possablilitys
     elif p1choice == "scissors":
         if p2choice == "rock":
-            Winner = player2
+            Winner = "player2"
             return Winner
         elif p2choice == "paper":
-            Winner = player1
+            Winner = "player1"
             return Winner
         elif p2choice == "scissors":
             Winner = "null"

@@ -14,7 +14,7 @@ import random
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all(), api_version=9)
 
 DemonicMuck = 856433605157191680
-
+owner = 595044207190867985
 
 token, test_token = dblogger.tokengrabber()
 
@@ -32,6 +32,7 @@ async def on_guild_join(Server):
     ServerID = Server.id
     UserID = None
     await dblogger.dbfixer(UserID, ServerID)
+    print("dbfixer ran (on_guild_join)")
 
 
 @bot.event
@@ -41,15 +42,18 @@ async def on_message(message):
     UserID = message.author.id
     ServerID = message.guild.id
     await dblogger.dbfixer(UserID, ServerID)
+    print("dbfixer ran (on_message)")
+    await dblogger.msgcountup(UserID, ServerID)
+    print("msgcountup ran (on_message)")
 
 @bot.event
 async def on_member_join(member):
     UserID = member.author.id
     ServerID = member.guild.id
     await dblogger.dbfixer(UserID, ServerID)
+    print("dbfixer ran (on_member_join)")
 
 @bot.tree.command(name="hello", description="Say hi to the bot")
-@commands.has_guild_permissions(kick_members=True)
 async def hello_command(interaction: discord.Interaction):
     UserID = interaction.user.id
     ServerID = interaction.guild_id
@@ -57,12 +61,6 @@ async def hello_command(interaction: discord.Interaction):
     greetings = ["Yo", "Sup", "Hello", "How you doin", "Nice to meet you!", "Greetings!", "Hi there!"]
     random_greeting = random.choice(greetings)
     await interaction.response.send_message(f"{random_greeting} {interaction.user.mention}", ephemeral=False)
-
-@hello_command.error
-async def warn_error(ctx, error):
-    if isinstance(error, MissingPermissions):
-        print("no permissions")
-        await ctx.send('You dont have permissions sorry', ephemeral=True)
 
 
 @bot.tree.command(name="counter", description="how many commands or messages have you used")
@@ -119,13 +117,17 @@ async def warn_command(interaction: discord.Interaction, user: discord.Member, r
     UserID = interaction.user.id
     ServerID = interaction.guild_id
     Timestamp = datetime.now().strftime("%Y-%m-%d")
-    EventID = await dblogger.generate_event_id(8)
-    await dblogger.cmdcountup(UserID, ServerID)
-    Success = await dblogger.warnlogger(UserID, ServerID, Timestamp, WarnedID, EventID, reason)
-    if Success:
-        await interaction.response.send_message(f"{user.mention} has been warned for {reason}")
+    #Use if statement to check if user has manage messages permission
+    if interaction.user.guild_permissions.manage_messages:
+        EventID = await dblogger.generate_event_id(8)
+        await dblogger.cmdcountup(UserID, ServerID)
+        Success = await dblogger.warnlogger(UserID, ServerID, Timestamp, WarnedID, EventID, reason)
+        if Success:
+            await interaction.response.send_message(f"{user.mention} has been warned for {reason}")
+        else:
+            await interaction.response.send_message("Failed to warn user")
     else:
-        await interaction.response.send_message("Failed to warn user")
+        await interaction.response.send_message(f"Sorry you dont have permssion to use this command", ephemeral=True)
 
     
 
@@ -136,15 +138,17 @@ async def kick_command(interaction: discord.Interaction, user: discord.Member, *
     UserID = interaction.user.id
     ServerID = interaction.guild_id
     Timestamp = datetime.now().strftime("%Y-%m-%d")
-    await dblogger.cmdcountup(UserID, ServerID)
-    
-     # Log the kick action
-    success = await dblogger.kicklogger(UserID, ServerID, Timestamp, WarnedID, reason)
-    if success:
-        await user.kick(reason=reason)
-        await interaction.response.send_message(f"{user.mention} has been kicked for {reason}")
+    if interaction.user.guild_permissions.kick_members:
+        await dblogger.cmdcountup(UserID, ServerID)
+        # Log the kick action
+        success = await dblogger.kicklogger(UserID, ServerID, Timestamp, WarnedID, reason)
+        if success:
+            await user.kick(reason=reason)
+            await interaction.response.send_message(f"{user.mention} has been kicked for {reason}")
+        else:
+            await interaction.response.send_message("Failed to log kick action - Kick Failed")
     else:
-        await interaction.response.send_message("Failed to log kick action")
+        await interaction.response.send_message("You do not have permission to use this command", ephemeral=True)
         
 
 
@@ -159,13 +163,19 @@ async def kick_command(interaction: discord.Interaction, user: discord.Member, *
     ]
 )
 async def actionlist(interaction: discord.Interaction, user: discord.Member, *, type: str):
+
+    #check if user has permissions to use command
+    
     UserID = user.id
     UserName = user
     cmdused = interaction.user.id
     ServerID = interaction.guild_id
-    await dblogger.cmdcountup(UserID, ServerID)
-    embed = await dblogger.Actionlistpull(UserID, ServerID, cmdused, type, UserName)
-    await interaction.response.send_message(embeds=embed)
+    if interaction.user.guild_permissions.manage_messages:
+        await dblogger.cmdcountup(UserID, ServerID)
+        embed = await dblogger.Actionlistpull(UserID, ServerID, cmdused, type, UserName)
+        await interaction.response.send_message(embeds=embed)
+    else:
+        await interaction.response.send_message("Sorry you dont have permission to use this command", ephemeral=True)
 
 async def disable_buttons(self):
         for child in self.children:
@@ -186,54 +196,60 @@ class RPSbuttons(discord.ui.View):
         if interaction.user == self.player2:
             print("correct player")
             p2choice = "rock"
-            #run RPS logic
+            # Run RPS logic
             Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == self.player1:
-                await interaction.response.send_message(f"**{self.player1.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
+            if Winner == "player1":
+                await interaction.response.send_message(f"# {self.player1.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
                 self.stop()
-            if Winner == self.player2:
-                await interaction.response.send_message(f"**{self.player2.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
+            elif Winner == "player2":
+                await interaction.response.send_message(f"# {self.player2.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
                 self.stop()
-            elif Winner == "null":
-                await interaction.response.send_message(f"**Its a tie!**\n{self.player1.display_name} and {self.player2.display_name} chose {self.p1choice}")
+            else:
+                await interaction.response.send_message(f"# It's a tie!\n{self.player1.display_name} and {self.player2.display_name} chose {self.p1choice}")
                 self.stop()
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
-    
+
+
     @discord.ui.button(label='paper', style=discord.ButtonStyle.green, custom_id='paper_button')
     async def paper(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user == self.player2:
             print("correct player")
             p2choice = "paper"
-            #run RPS logic
+            # Run RPS logic
             Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == self.player1:
-                await interaction.response.send_message(f"**{self.player1.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
-            if Winner == self.player2:
-                await interaction.response.send_message(f"**{self.player2.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
-            elif Winner == "null":
-                await interaction.response.send_message(f"**Its a tie!**\n{self.player1.display_name} and {self.player2.display_name} chose {self.p1choice}")
+            if Winner == "player1":
+                await interaction.response.send_message(f"# {self.player1.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
+                self.stop()
+            elif Winner == "player2":
+                await interaction.response.send_message(f"# {self.player2.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
+                self.stop()
+            else:
+                await interaction.response.send_message(f"# It's a tie!\n**{self.player1.display_name}** and **{self.player2.display_name}** chose `{self.p1choice}`")
+                self.stop()
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
-        await RPSbuttons(interaction)
-    
+            await RPSbuttons(interaction)
+
+
     @discord.ui.button(label='scissors', style=discord.ButtonStyle.green, custom_id='scissors_button')
     async def scissors(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user == self.player2:
             print("correct player")
             p2choice = "scissors"
-            #run RPS logic
+            # Run RPS logic
             Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == self.player1:
-                await interaction.response.send_message(f"**{self.player1.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
-            if Winner == self.player2:
-                await interaction.response.send_message(f"**{self.player2.display_name} Has Won!**\n{self.player1.display_name} chose {self.p1choice}\n{self.player2.display_name} chose {p2choice}")
-            elif Winner == "null":
-                await interaction.response.send_message(f"**Its a tie!**\n{self.player1.display_name} and {self.player2.display_name} chose {self.p1choice}")
+            if Winner == "player1":
+                await interaction.response.send_message(f"# {self.player1.display_name} Has Won! \n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
+            elif Winner == "player2":
+                await interaction.response.send_message(f"# {self.player2.display_name} Has Won! \n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
+            else:
+                await interaction.response.send_message(f"# It's a tie! \n**{self.player1.display_name}** and **{self.player2.display_name}** chose `{self.p1choice}`")
+            self.stop()
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
-        await RPSbuttons(interaction)
-        
+            await RPSbuttons(interaction)
+
 
 @bot.tree.command(name="rps", description="Play a game of RPS with a bot or a friend")
 @app_commands.choices(
@@ -251,31 +267,28 @@ async def RPScommand(interaction: discord.Interaction, challenged: discord.Membe
     player2 = challenged
     p1choice = choice
 
-
-    if player2.bot: #check if they are a bot
+    if player2.bot:  # Check if they are a bot
         print(f"{player1} is fighting a bot")
         botoptions = ['rock', 'paper', 'scissors']
         p2choice = random.choice(botoptions)
         print(f"the bot chose {p2choice}")
-        #Run RPS logic for the winner of the bot
+        # Run RPS logic for the winner of the bot
         Winner = await dblogger.RPSlogic(player1, player2, p1choice, p2choice)
         if Winner == "player1":
-            await interaction.response.send_message(f"**{player1.display_name} Has Won!**\n{player1.display_name} chose {p1choice}\n{player2.display_name} chose {p2choice}")
-        if Winner == "player2":
-            await interaction.response.send_message(f"**{player2.display_name} Has Won!**\n{player1.display_name} chose {p1choice}\n{player2.display_name} chose {p2choice}")
-        elif Winner == "null":
-            await interaction.response.send_message(f"**Its a tie!**\n{player1.display_name} and {player2.display_name} chose {p1choice}")
-    
-    elif player1 == player2: #check if they are the same person
-        await interaction.response.send_message(f"Sorry you cant challenge yourself", ephemeral=True)
-
-
-    else: #play against human
+            await interaction.response.send_message(f"# {player1.display_name} Has Won!\n**{player1.display_name}** chose `{p1choice}`\n**{player2.display_name}** chose `{p2choice}`")
+        elif Winner == "player2":
+            await interaction.response.send_message(f"# {player2.display_name} Has Won!\n**{player1.display_name}** chose `{p1choice}`\n**{player2.display_name}** chose `{p2choice}`")
+        else:
+            await interaction.response.send_message(f"# It's a tie!\n**{player1.display_name}** and **{player2.display_name}** chose `{p1choice}`")
+    elif player1 == player2:  # Check if they are the same person
+        await interaction.response.send_message(f"Sorry you can't challenge yourself", ephemeral=True)
+    else:  # Play against human
         print(f"{player1} is fighting {player2}")
         await interaction.response.send_message(f"{challenged.mention} you have been challenged\nchoose your weapon:", view=RPSbuttons(player1, player2, p1choice))
 
 
-#run bot
 
+
+#run bot
 # !! Change test_token to token BEFORE LAUNCH !!
 bot.run(test_token)
