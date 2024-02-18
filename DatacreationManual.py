@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the database (creates a new file if it doesn't exist)
-conn = sqlite3.connect('Data/wordfilter.db')
+conn = sqlite3.connect('Data/Servers/')
 
 # Create a cursor object to execute SQL statements
 cursor = conn.cursor()

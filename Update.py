@@ -10,8 +10,13 @@ import random
 
 
 
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all(), api_version=9)
+description = '''Discord Bot :)'''
+
+bot = commands.Bot(command_prefix='?', description=description, intents=intents)
 
 DemonicMuck = 856433605157191680
 owner = 595044207190867985
@@ -53,6 +58,8 @@ async def on_member_join(member):
     await dblogger.dbfixer(UserID, ServerID)
     print("dbfixer ran (on_member_join)")
 
+
+
 @bot.tree.command(name="hello", description="Say hi to the bot")
 async def hello_command(interaction: discord.Interaction):
     UserID = interaction.user.id
@@ -89,7 +96,7 @@ async def counter(interaction: discord.Interaction, choice: str):
 
 
 
-@bot.tree.command(name="repeat")
+@bot.tree.command(name="repeat", description="Make the bot say what you want")
 @app_commands.describe(message="message")
 async def say(interaction: discord.Interaction, message: str):
     UserID = interaction.user.id
@@ -197,16 +204,8 @@ class RPSbuttons(discord.ui.View):
             print("correct player")
             p2choice = "rock"
             # Run RPS logic
-            Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == "player1":
-                await interaction.response.send_message(f"# {self.player1.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-                self.stop()
-            elif Winner == "player2":
-                await interaction.response.send_message(f"# {self.player2.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-                self.stop()
-            else:
-                await interaction.response.send_message(f"# It's a tie!\n{self.player1.display_name} and {self.player2.display_name} chose {self.p1choice}")
-                self.stop()
+            Winner = await dblogger.rps_logic(self.player1, self.player2, self.p1choice, p2choice)
+            await handle_winner(interaction ,Winner, self.p1choice, p2choice, self.player1, self.player2)
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
 
@@ -217,16 +216,9 @@ class RPSbuttons(discord.ui.View):
             print("correct player")
             p2choice = "paper"
             # Run RPS logic
-            Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == "player1":
-                await interaction.response.send_message(f"# {self.player1.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-                self.stop()
-            elif Winner == "player2":
-                await interaction.response.send_message(f"# {self.player2.display_name} Has Won!\n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-                self.stop()
-            else:
-                await interaction.response.send_message(f"# It's a tie!\n**{self.player1.display_name}** and **{self.player2.display_name}** chose `{self.p1choice}`")
-                self.stop()
+            Winner = await dblogger.rps_logic(self.player1, self.player2, self.p1choice, p2choice)
+            await handle_winner(interaction ,Winner, self.p1choice, p2choice, self.player1, self.player2)
+            self.stop()
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
             await RPSbuttons(interaction)
@@ -238,13 +230,8 @@ class RPSbuttons(discord.ui.View):
             print("correct player")
             p2choice = "scissors"
             # Run RPS logic
-            Winner = await dblogger.RPSlogic(self.player1, self.player2, self.p1choice, p2choice)
-            if Winner == "player1":
-                await interaction.response.send_message(f"# {self.player1.display_name} Has Won! \n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-            elif Winner == "player2":
-                await interaction.response.send_message(f"# {self.player2.display_name} Has Won! \n**{self.player1.display_name}** chose `{self.p1choice}`\n**{self.player2.display_name}** chose `{p2choice}`")
-            else:
-                await interaction.response.send_message(f"# It's a tie! \n**{self.player1.display_name}** and **{self.player2.display_name}** chose `{self.p1choice}`")
+            Winner = await dblogger.rps_logic(self.player1, self.player2, self.p1choice, p2choice)
+            await handle_winner(interaction ,Winner, self.p1choice, p2choice, self.player1, self.player2)
             self.stop()
         else:
             await interaction.response.send_message(f"You are the challenged one", ephemeral=True)
@@ -273,13 +260,8 @@ async def RPScommand(interaction: discord.Interaction, challenged: discord.Membe
         p2choice = random.choice(botoptions)
         print(f"the bot chose {p2choice}")
         # Run RPS logic for the winner of the bot
-        Winner = await dblogger.RPSlogic(player1, player2, p1choice, p2choice)
-        if Winner == "player1":
-            await interaction.response.send_message(f"# {player1.display_name} Has Won!\n**{player1.display_name}** chose `{p1choice}`\n**{player2.display_name}** chose `{p2choice}`")
-        elif Winner == "player2":
-            await interaction.response.send_message(f"# {player2.display_name} Has Won!\n**{player1.display_name}** chose `{p1choice}`\n**{player2.display_name}** chose `{p2choice}`")
-        else:
-            await interaction.response.send_message(f"# It's a tie!\n**{player1.display_name}** and **{player2.display_name}** chose `{p1choice}`")
+        Winner = await dblogger.rps_logic(player1, player2, p1choice, p2choice)
+        await handle_winner(interaction ,Winner, p1choice, p2choice, player1, player2)
     elif player1 == player2:  # Check if they are the same person
         await interaction.response.send_message(f"Sorry you can't challenge yourself", ephemeral=True)
     else:  # Play against human
@@ -288,7 +270,87 @@ async def RPScommand(interaction: discord.Interaction, challenged: discord.Membe
 
 
 
+async def handle_winner(interaction ,Winner, p1choice, p2choice, player1, player2):
+    if Winner == "null":
+        await interaction.response.send_message(f"# It's a tie!\n*Both players chose `{p2choice}`*")
+    elif Winner == player1:
+        await interaction.response.send_message(f"# {player1.display_name} has won!\n*{player2.display_name} chose `{p2choice}`*\n*{player1.display_name} chose `{p1choice}`*")
+    elif Winner == player2:
+        await interaction.response.send_message(f"# {player2.display_name} has won!\n*{player1.display_name} chose `{p1choice}`*\n*{player2.display_name} chose `{p2choice}`*")
 
+
+@bot.tree.command(name="vote", description="Adds a suggestion to the vote")
+async def vote_command(interaction: discord.Interaction, suggestion: str):
+    UserID = interaction.user.id
+    ServerID = interaction.guild_id
+    await dblogger.cmdcountup(UserID, ServerID)
+    EventID = await dblogger.generate_event_id(8)
+    Timestamp = datetime.now().strftime("%Y-%m-%d")
+    await StoreVote(suggestion, UserID, ServerID, EventID, Timestamp)
+    embed = discord.Embed(title="Suggestion Added", color=0x00ff00)
+    embed.add_field(name="Suggestion", value=suggestion, inline=True)
+    embed.add_field(name="EventID", value=EventID, inline=True)
+    embed.set_footer(text="To remove this suggestion\nuse the EventID in the /vremove command")
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="vremove", description="use the Event ID of the vote to remove the vote from the list")
+async def vremove_command(interaction: discord.Interaction, event_id: str):
+    UserID = interaction.user.id
+    ServerID = interaction.guild.id
+    await dblogger.cmdcountup(UserID, ServerID)
+    result = await RemoveVote(UserID, ServerID, event_id)
+    if result == "invalid":
+        await interaction.response.send_message(f"No suggestion found with the provided EventID.")
+    if not result:
+        await interaction.response.send_message(f"Successfully removed suggestion from list")
+
+@bot.tree.command(name="vlist", description="show a list of suggestions made")
+async def vlist_command(interaction: discord.Interaction):
+    UserID = interaction.user.id
+    ServerID = interaction.guild.id
+    await dblogger.cmdcountup(UserID, ServerID)
+    votes = await ViewVoteList(UserID, ServerID)
+    embed = discord.Embed(title="List of Votes", color=0x00ff00)
+    for vote in votes:
+        embed.add_field(name=f"Suggestion: {vote[0]}", value=f"EventID: {vote[2]}\nBy: <@{vote[1]}>\nTimestamp: {vote[3]}", inline=False)
+        embed.set_footer(text="To remove a suggestion\nuse the /vremove command with the designated EventID")
+    if not votes:
+        embed.add_field(name="Votes", value="No votes have been recorded.")
+    # Send the embed as a response
+    await interaction.response.send_message(embed=embed)
+
+
+
+@bot.tree.command(name="vrun", description="Run the vote (randomised)")
+async def RPScommand(interaction: discord.Interaction):
+    UserID = interaction.user.id
+    ServerID = interaction.guild.id
+    await dblogger.cmdcountup(UserID, ServerID)
+    # Fetch all votes from the database
+    votes = await ViewVoteList(UserID, ServerID)
+
+
+    # Check if there are any votes
+    if not votes:
+        await interaction.response.send_message("No suggestions found.")
+        return
+
+    # Randomly select a suggestion
+    random_suggestion = random.choice(votes)
+
+    # Create an embed with the randomly selected suggestion
+    embed = discord.Embed(title="Randomly Selected Suggestion", color=0x00ff00)
+    embed.add_field(name="Suggestion", value=random_suggestion[0], inline=False)
+    embed.add_field(name="User ID", value=random_suggestion[1], inline=False)
+    embed.add_field(name="Event ID", value=random_suggestion[2], inline=False)
+    embed.add_field(name="Timestamp", value=random_suggestion[3], inline=False)
+
+    # Send the embed to the user
+    await interaction.response.send_message(embed=embed)
+    print("running voteran")
+    await Voteran(ServerID)
+        
 #run bot
 # !! Change test_token to token BEFORE LAUNCH !!
 bot.run(test_token)

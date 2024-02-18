@@ -292,37 +292,90 @@ async def countergrabber(UserID, ServerID, choice):
     await db.close
 
 
-async def RPSlogic(player1, player2, p1choice, p2choice):
-    # p1 rock possabilitys
-    if p1choice == "rock":
-        if p2choice == "rock":
-            Winner = "null"
-            return Winner
-        elif p2choice == "scissors":
-            Winner = "player1"
-            return Winner
-        elif p2choice == "paper":
-            Winner = "player2"
-            return Winner
-    # p1 Paper Possabilitys
-    elif p1choice == "paper":
-        if p2choice == "rock":
-            Winner = "player1"
-            return player1
-        elif p2choice == "paper":
-            Winner = "null"
-            return Winner
-        elif p2choice == "scissors":
-            Winner = "player2"
-            return Winner
-    # p1 Scissors Possablilitys
-    elif p1choice == "scissors":
-        if p2choice == "rock":
-            Winner = "player2"
-            return Winner
-        elif p2choice == "paper":
-            Winner = "player1"
-            return Winner
-        elif p2choice == "scissors":
-            Winner = "null"
-            return Winner
+async def rps_logic(player1, player2, p1_choice, p2_choice):
+    if p1_choice == "rock":
+        if p2_choice == "rock":
+            winner = "null"
+        elif p2_choice == "scissors":
+            winner = player1
+        else:  # p2_choice == "paper"
+            winner = player2
+    elif p1_choice == "paper":
+        if p2_choice == "rock":
+            winner = player1
+        elif p2_choice == "scissors":
+            winner = player2
+        else:  # p2_choice == "paper"
+            winner = "null"
+    else:  # p1_choice == "scissors"
+        if p2_choice == "rock":
+            winner = player2
+        elif p2_choice == "paper":
+            winner = player1
+        else:  # p2_choice == "scissors"
+            winner = "null"
+    return winner
+        
+async def StoreVote(Vote, UserID, ServerID, EventID, Timestamp):
+    #Apply Connection to the Database
+    await dbfixer(UserID, ServerID)
+    db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
+    cursor = await db.cursor()
+
+    print (f"Attempting To Store Vote made by {UserID}")
+    #store information provided
+    await cursor.execute('''INSERT INTO Votes (Suggestion, UserID, EventID, TimeStamp) VALUES (?, ?, ?, ?)''', (Vote, UserID, EventID, Timestamp))
+    await db.commit()
+    await db.close()
+    print (f"successfully Stored Vote")
+
+async def RemoveVote(UserID, ServerID, EventID):
+    # Apply Connection to the Database
+    await dbfixer(UserID, ServerID)
+    db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
+    cursor = await db.cursor()
+
+    print(f"Attempting to remove Vote {EventID}")
+    await cursor.execute('''SELECT * FROM Votes WHERE EventID = ?''', (EventID,))
+    vote = await cursor.fetchone()
+    if not vote:
+        print("No vote found with the provided EventID.")
+        await db.close()
+        result = "invalid" 
+        return result
+
+    # Remove vote where EventID matches
+    await cursor.execute('''DELETE FROM Votes WHERE EventID = ?''', (EventID,))
+    
+    await db.commit()
+    await db.close()
+    print(f"Successfully removed Vote")
+    return
+
+
+async def ViewVoteList(UserID, ServerID):
+    await dbfixer(UserID, ServerID)
+    db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
+    cursor = await db.cursor()
+
+    # Fetch all votes from the database
+    await cursor.execute('''SELECT Suggestion, UserID, EventID, Timestamp FROM Votes''')
+    votes = await cursor.fetchall()
+
+    # Close the database connection
+    await db.close()
+
+    return votes
+
+
+async def Voteran(ServerID):
+    db = await asqlite.connect(f"Data/Servers/{ServerID}.db")
+    cursor = await db.cursor()
+
+    # Update the ClearVotesFlag column to 1
+    await cursor.execute('''UPDATE ServerInfo SET ClearVotesFlag = 1''')
+    print("set clearvotesflag to 1")
+
+    # Commit the changes and close the connection
+    await db.commit()
+    await db.close()
